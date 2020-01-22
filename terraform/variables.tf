@@ -1,8 +1,4 @@
-#
-# Variables Configuration
-#
 
-variable "cluster-name" {
-  default = "terraform-eks-demo"
-  type    = string
+variable "region" {
+  default = "eu-west-1"
 }

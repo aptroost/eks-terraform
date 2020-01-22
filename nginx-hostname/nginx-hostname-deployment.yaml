@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nginx-hostname
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-hostname
+  namespace: nginx-hostname
+spec:
+  selector:
+    matchLabels:
+      app: nginx-hostname
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx-hostname
+    spec:
+      containers:
+        - name: nginx-hostname
+          image: stenote/nginx-hostname:v1.0
