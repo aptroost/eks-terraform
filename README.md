@@ -2,14 +2,11 @@
 
 Declerative EKS deployment.
 
-Features:
+This README features a description how to:
 
-- Terraform templates for EKS deployment
-
-Todos:
-
-- include [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
-- run a pod to demontrate EKS autoscaling
+- apply an EKS deployment with Terraform
+- deploy [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
+- demontrate EKS autoscaling with a simple deployment
 
 ## Deploy EKS
 
@@ -72,12 +69,6 @@ worker_groups = [{
 
 We also need to install the [cluster-autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) into the cluster. The easiest way is to deploy [the available Helm chart](https://github.com/helm/charts/tree/master/stable/cluster-autoscaler). But when initialized, the server side of Helm, Tiller, runs in your cluster with full admin rights, which is undeniable a security issue. [The method of Tobias Bradtke](https://blog.giantswarm.io/what-you-yaml-is-what-you-get/) is to use Helm locally to render the templates as manifests to deploy. for these operations bash files are available.
 
-Create a secret with your AWS credentials:
-
-```cmd
-kubectl create secret aws-secret --aws_access_key_id=YOUR_AWS_ACCESS_KEY_ID --aws_secret_access_key=YOUR_AWS_SECRET_ACCESS_KEY
-```
-
 Fetch the charts and the default values file:
 
 ````cmd
@@ -115,11 +106,9 @@ service/cluster-autoscaler-aws-cluster-autoscaler created
 serviceaccount/cluster-autoscaler-aws-cluster-autoscaler created
 ````
 
-## To the test
+## auto-scaling in practice
 
-The m4.large: 2 CPU and 8 GiB
-
-Deploy an example application, e.g. [nginx-hostname](https://hub.docker.com/r/stenote/nginx-hostname/tags) returns the name of it's host.
+Deploy an example application, e.g. [nginx-hostname](https://hub.docker.com/r/stenote/nginx-hostname/tags) returns the name of the host container.
 
 ```cmd
 $ k apply -f nginx-hostname/nginx-hostname-deployment.yaml
@@ -130,15 +119,66 @@ deployment.apps/nginx-hostname created
 Wait untill the pod has started and forward the port:
 
 ```cmd
-kubectl port-forward -n nginx-hostname nginx-hostname-77698b94b8-8q9hg 8080:80
+kubectl port-forward -n nginx-hostname $(kubectl get pod -n nginx-hostname -o jsonpath="{.items[0].metadata.name}") 8080:80
 ```
 
-And navigate to <http://localhost:8080> to find the name of the host.
+In another shell, get the name of the host running the pod:
+
+```cmd
+$ curl localhost:8080
+nginx-hostname-798c6f6564-7bsd8 | v1.0
+```
+
+That is not really spectacular, but this brings us to the point where we can demonstrate how auto-scaling works. The deployment of the nginx-hostname includes requested resources:
+
+```yml
+...
+    resources:
+      requests:
+        memory: "4GiB"
+        cpu: "1050m"
+```
+
+That is definitely an overkill of resources for such a simple pod; but since the m4.large instances only have 2 CPU and 8 GiB Memory, two of these pods will never be deployed on 1 machine.
+
+### Upscaling
+
+We can increase the number of replicas to 3 in the file `nginx-hostname/nginx-hostname-deployment.yaml` and run `k apply -f nginx-hostname/nginx-hostname-deployment.yaml`.
+
+```cmd
+$ kubectl get po -n nginx-hostname -o wide -w
+NAME                              READY   STATUS    RESTARTS   AGE     IP          NODE                                       NOMINATED NODE   READINESS GATES
+nginx-hostname-5cfbfcfbd7-fkmcb   1/1     Running   0          39s     10.0.4.16   ip-10-0-4-175.eu-west-1.compute.internal   <none>           <none>
+nginx-hostname-5cfbfcfbd7-n5vk2   1/1     Running   0          4m57s   10.0.5.28   ip-10-0-5-197.eu-west-1.compute.internal   <none>           <none>
+nginx-hostname-5cfbfcfbd7-t896q   0/1     Pending   0          6s      <none>      <none>                                     <none>           <none>
+```
+
+Currently the third pod cannot be placed on any machine. If you wait one minute (or two), if auto-scaling is correctly configured, the last pod will change status to "Running". When we check the number of nodes:
+
+```cmd
+$ k get no
+NAME                                       STATUS   ROLES    AGE    VERSION
+ip-10-0-4-175.eu-west-1.compute.internal   Ready    <none>   147m   v1.14.8-eks-b8860f
+ip-10-0-5-197.eu-west-1.compute.internal   Ready    <none>   159m   v1.14.8-eks-b8860f
+ip-10-0-6-188.eu-west-1.compute.internal   Ready    <none>   5m4s   v1.14.8-eks-b8860f
+```
+
+There are three instances! I experienced that the up-scaling latency is really only 30 to 60 seconds. Increase the number of replicas to 6 and apply it to the cluster. When after one or two minutes, we check the number of pods:
+
+![Screenshot of the six pods](images/screenshot_six_pods.png)
+
+There is still one pending pod. This is expected behavior, because we have indicated in the file `terraform/main.tf` that the worker group can scale up to a maximum of 5 instances (variable `asg_max_size`).
+
+### Downscaling
+
+Change the number of replicas back to 2\. We expect the following behavior:
+
+- first the number of nginx-hostname pods will be reduced to two;
+- autoscaling detects that the load on the cluster is reduced and shuffling of pods is possible;
+- three of the five instances are terminated.
+
+The latency to scale down is is about 10 minutes, much longer than for upscaling. Some cooldown perio for scalingdown is certainly desired to deal with volatility in demand. But one can tune this settings in the `cluster-autoscaler/values/cluster-autoscaler.yaml` file.
 
 ## Resources
 
-- [Terraform setup EKS](https://learn.hashicorp.com/terraform/aws/eks-intro)
 - [Terraform AWS templates for EKS](https://github.com/terraform-aws-modules/terraform-aws-eks)
-- [EKS ctl](https://medium.com/@Joachim8675309/building-eks-with-eksctl-799eeb3b0efd)
-- [This codebase has been the starting point for the TF templates](https://github.com/terraform-providers/terraform-provider-aws/tree/master/examples/eks-getting-started)
-- [autoscaler enable](https://stackoverflow.com/questions/57928941/how-can-i-configure-an-aws-eks-autoscaler-with-terraform)]
