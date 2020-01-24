@@ -320,6 +320,8 @@ In bash, run the following command to send an infinite loop of queries to the ph
 while true; do wget -q -O- http://php-apache.php-apache.svc.cluster.local; done
 ```
 
+![Run many busyboxes](images/tmux-demo.gif)
+
 ## Resources
 
 - [Terraform AWS templates for EKS](https://github.com/terraform-aws-modules/terraform-aws-eks)
