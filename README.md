@@ -298,7 +298,7 @@ The CPU consumption has increased to 100% of the request. It may take a few minu
 
 ### [Burn baby burn](https://github.com/chrislgarry/Apollo-11/blob/master/Luminary099/BURN_BABY_BURN--MASTER_IGNITION_ROUTINE.agc)
 
-As a micro bonus I will launch many busyboxes as above to further increase the load and see if we can actually get number of deployed pods to the maximum of 10\. [tmux](https://github.com/tmux/tmux/wiki) can be used to run commands on multiple compute instances at the same time.
+As a micro bonus I will launch many busyboxes as above to further increase the load and see if we can actually get number of deployed pods to the maximum of 10 and 4 instances running. [tmux](https://github.com/tmux/tmux/wiki) can be used to run commands on multiple compute instances at the same time.
 
 In the terminal, start a new tmux session
 
@@ -321,6 +321,10 @@ while true; do wget -q -O- http://php-apache.php-apache.svc.cluster.local; done
 ```
 
 ![Run many busyboxes](images/tmux-demo.gif)
+
+It took some time, but eventually I got 10 pods and four instances running!
+
+![10 pods with 4 instances](images/hpa-instances.png)
 
 ## Resources
 
