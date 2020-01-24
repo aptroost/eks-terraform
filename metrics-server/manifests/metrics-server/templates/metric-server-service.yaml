@@ -1,0 +1,23 @@
+---
+# Source: metrics-server/templates/metric-server-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-server
+  labels:
+    app: metrics-server
+    chart: metrics-server-2.9.0
+    release: metrics-server
+    heritage: Tiller
+  annotations:
+    {}
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: https
+  selector:
+    app: metrics-server
+    release: metrics-server
+  type: ClusterIP
+
