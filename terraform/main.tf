@@ -53,6 +53,7 @@ module "eks" {
   worker_groups = [
     {
       instance_type         = "m4.large"
+      desired_capacity      = 2
       asg_min_size          = 2
       asg_max_size          = 5
       autoscaling_enabled   = true
