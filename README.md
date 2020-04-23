@@ -23,7 +23,7 @@ The templates can be found in the `terraform` directory, using the [Terraform-AW
 
 ```cmd
 cd terraform
-terrafrom init
+terraform init
 terraform plan
 ```
 
@@ -243,7 +243,7 @@ service/php-apache created
 Check the status of the deployment of a single pod:
 
 ```cmd
-$k get po -n php-apache
+$ kubectl get po -n php-apache
 NAME                          READY   STATUS    RESTARTS   AGE
 php-apache-7889465795-mz6g6   1/1     Running   0          4m48s
 ```
@@ -251,14 +251,14 @@ php-apache-7889465795-mz6g6   1/1     Running   0          4m48s
 Deploy the HPA:
 
 ```cmd
-$kubectl apply -f ./php-apache/php-apache-hpa.yaml
+$ kubectl apply -f ./php-apache/php-apache-hpa.yaml
 horizontalpodautoscaler.autoscaling/php-apache created
 ```
 
 We may check the current status of autoscaler by running:
 
 ```cmd
-$kubectl get hpa -n php-apache
+$ kubectl get hpa -n php-apache
 NAME         REFERENCE               TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
 php-apache   Deployment/php-apache   0%/50%    1         10        1          4m
 ```
@@ -266,7 +266,7 @@ php-apache   Deployment/php-apache   0%/50%    1         10        1          4m
 to show that hpa and ca complement each other, verify that there are currently only two instances running:
 
 ```cmd
-$k get no
+$ kubectl get no
 NAME                                       STATUS   ROLES    AGE   VERSION
 ip-10-0-4-77.eu-west-1.compute.internal    Ready    <none>   36m   v1.14.8-eks-b8860f
 ip-10-0-5-197.eu-west-1.compute.internal   Ready    <none>   46h   v1.14.8-eks-b8860f
@@ -277,7 +277,7 @@ ip-10-0-5-197.eu-west-1.compute.internal   Ready    <none>   46h   v1.14.8-eks-b
 Let's see how the horizontal pod autoscaler reacts to increasing load:
 
 ```cmd
-$kubectl run --generator=run-pod/v1 -it -n php-apache --rm load-generator --image=busybox /bin/sh
+$ kubectl run --generator=run-pod/v1 -it -n php-apache --rm load-generator --image=busybox /bin/sh
 ```
 
 In bash, run the following command to send an infinite loop of queries to the php-apache service:
@@ -289,7 +289,7 @@ while true; do wget -q -O- http://php-apache.php-apache.svc.cluster.local; done
 In another terminal, you can check the CPU usage and number of replicas:
 
 ```cmd
-$k get hpa -n php-apache
+$ kubectl get hpa -n php-apache
 NAME         REFERENCE               TARGETS    MINPODS   MAXPODS   REPLICAS   AGE
 php-apache   Deployment/php-apache   100%/50%   1         10        2          17m
 ```
